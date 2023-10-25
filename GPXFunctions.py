@@ -1,6 +1,6 @@
 import gpxpy
 
-import pandas as pd
+import pandas    as pd
 import streamlit as st
 
 from gpxpy import gpx 
@@ -10,20 +10,35 @@ class GPXObject:
     def __init__(self,file):
         self.file = file
         self.basic_route_info = pd.DataFrame(columns=[ # The dataframe where we are going to store the GPX data. 
+        'time',
         'latitude',
         'longitude',
-        'elevation'
+        'elevation',
+        'distance'
     ])
+        
+    def calculateDistanceWithLastPoint(self,point,lastPoint):
+        """
+        This functions uses the function from GPX "distance_3d" to calculate the
+        distance in kms between the two points receveid as parameter. 
+        
+        The points must be of gpxpy.gpx.GPXTrackPoint type.
+
+        input:
+            - point:     coordinate 1 in GPXTrackPoint format.
+            - lastPoint: coordinate 2 in GPXTrackPoint format.
+        """
+        return point.distance_3d(lastPoint)/1000
 
     def readGPXFile(self):
         """
         This function receives the uploaded file by the user and converts it to a
-        GPX file by storing the coordinates into a dataframe.
+        GPX file by storing the coordinates information into a dataframe.
         
         input:
             - file: file uploaded by user.
         output:
-            - route_info: coordinates (latitude, longitude, elevation) stored in a dataframe. 
+            - route_info: coordinates (time, latitude, longitude, elevation, distanceCDF) stored in a dataframe. 
 
         """ 
         gpx_file = self.file.read()
@@ -31,9 +46,16 @@ class GPXObject:
 
         for track in gpx.tracks:
             for segment in track.segments:
+                # We initialize the variable "totalDistance" where we are going to store the cumulative distance in each point.
+                # Describing a Cumulative Distribution Function (CDF).  
+                totalDistance = 0 
+                lastPoint = segment.points[0] # To avoid to use an if for each point, we initialize the "lastPoint" as starting point. 
                 for point in segment.points:
-                    infoPoint = [point.latitude, point.longitude, point.elevation]
+                    totalDistance += round(self.calculateDistanceWithLastPoint(point,lastPoint),4)
+                    infoPoint = [point.time ,point.latitude, point.longitude, point.elevation,totalDistance]
                     self.basic_route_info.loc[len(self.basic_route_info)] = infoPoint
+                    lastPoint = point
+
         return self.basic_route_info
 
     def calculateElevationColors(self):
@@ -52,6 +74,8 @@ class GPXObject:
 
         for i in range(len(self.basic_route_info)):
             elevation = self.basic_route_info.iloc[i]['elevation']
+
+            # We normalize the elevation value to a RGB value. Max Elevation = RED, Min Elevation = GREEN. 
             factor = (elevation - minElevation) / (maxElevation - minElevation)
 
             red   = int(255*factor)
