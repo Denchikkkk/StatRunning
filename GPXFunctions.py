@@ -1,4 +1,6 @@
 import gpxpy
+import math
+import random
 
 import pandas    as pd
 import streamlit as st
@@ -49,7 +51,8 @@ class GPXObject:
                 # We initialize the variable "totalDistance" where we are going to store the cumulative distance in each point.
                 # Describing a Cumulative Distribution Function (CDF).  
                 totalDistance = 0 
-                lastPoint = segment.points[0] # To avoid to use an if for each point, we initialize the "lastPoint" as starting point. 
+                lastPoint = segment.points[0] # To avoid to use an if for each point, we initialize the "lastPoint" as starting point.
+
                 for point in segment.points:
                     totalDistance += round(self.calculateDistanceWithLastPoint(point,lastPoint),4)
                     infoPoint = [point.time ,point.latitude, point.longitude, point.elevation,totalDistance]
@@ -57,6 +60,26 @@ class GPXObject:
                     lastPoint = point
 
         return self.basic_route_info
+    
+    def getRandomColorValue(self):
+        r = random.randint(0,255)
+        g = random.randint(0,255)
+        b = random.randint(0,255)
+        return self.rgb_to_hex((r,g,b))
+    
+    def calculateDistanceColors(self):
+        maxDistance = math.ceil(self.basic_route_info.loc[len(self.basic_route_info)-1]['distance'])
+
+        Colors = [self.getRandomColorValue() for i in range(maxDistance)]
+        
+        distanceColors = []
+
+        for i in range(len(self.basic_route_info)):
+            distanceColors.append(Colors[math.ceil(self.basic_route_info.iloc[i]['distance'])-1])
+        
+        self.basic_route_info['colors'] = distanceColors
+        return self.basic_route_info
+
 
     def calculateElevationColors(self):
         """
@@ -74,19 +97,20 @@ class GPXObject:
 
         for i in range(len(self.basic_route_info)):
             elevation = self.basic_route_info.iloc[i]['elevation']
-
-            # We normalize the elevation value to a RGB value. Max Elevation = RED, Min Elevation = GREEN. 
-            factor = (elevation - minElevation) / (maxElevation - minElevation)
-
-            red   = int(255*factor)
-            green = int(255*(1-factor))
-            blue  = 0
-            rgb = (red,green,blue)
-            color = self.rgb_to_hex(rgb)
-            elevationColors.append(color)
+            elevationColors.append(self.normalizeToColors(minElevation,maxElevation,elevation))
 
         self.basic_route_info['colors'] = elevationColors
         return self.basic_route_info
+    
+    def normalizeToColors(self,min,max,actualValue):
+        factor = (actualValue - min) / (max - min)
+        red   = int(255*factor)
+        green = int(255*(1-factor))
+        blue  = 0
+        rgb = (red,green,blue)
+        return self.rgb_to_hex(rgb)
+        
+
     
     def rgb_to_hex(self,rgb):
         # Ensure RGB values are within the valid range (0-255)
