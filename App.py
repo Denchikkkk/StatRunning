@@ -28,7 +28,8 @@ def Main():
         totalDistance = round(route_info.iloc[-1]['distance'],2)
         
         rythm       = time.strftime("%M:%S",time.gmtime(totalTime.seconds/totalDistance))
-        
+        rythmxKM, seconds    = gpxInfo.CalculateRythmXKm()
+
         totalDistancestr = str(totalDistance) 
         totalTimestr     = str(totalTime).replace('0 days ', '')
         
@@ -43,7 +44,7 @@ def Main():
 
             # Line Chart Plot. X-axis = Distance (in KM.) Y-axis = Height (respective to the level of the sea.)
             chart_data = route_info[['distance','elevation']].set_index('distance')
-            st.line_chart(chart_data)
+            st.area_chart(chart_data,color='#FF0000')
 
         elif typeOfMap == 'Normal Map':
             st.map(route_info,size=2)
@@ -51,6 +52,8 @@ def Main():
         elif typeOfMap == 'Kilometers / Miles Map':
             route_infoColors = gpxInfo.calculateDistanceColors()
             st.map(route_infoColors, color='colors',size=2)
+        
+        st.line_chart(rythmxKM,x='KM',y='Rythm')
         
     else:
         st.map()
