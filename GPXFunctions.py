@@ -1,10 +1,12 @@
 import gpxpy
 import math
 import random
+import time
 
 import pandas    as pd
 import streamlit as st
 
+from Coloring import Coloring
 from gpxpy import gpx 
 
 class GPXObject:
@@ -61,16 +63,9 @@ class GPXObject:
 
         return self.basic_route_info
     
-    def getRandomColorValue(self):
-        r = random.randint(0,255)
-        g = random.randint(0,255)
-        b = random.randint(0,255)
-        return self.rgb_to_hex((r,g,b))
-    
     def calculateDistanceColors(self):
-        maxDistance = math.ceil(self.basic_route_info.loc[len(self.basic_route_info)-1]['distance'])
-
-        Colors = [self.getRandomColorValue() for i in range(maxDistance)]
+        maxDistance = self.getMaxDistanceInt()
+        Colors = [Coloring.getRandomColorValue() for i in range(maxDistance)]
         
         distanceColors = []
 
@@ -97,29 +92,33 @@ class GPXObject:
 
         for i in range(len(self.basic_route_info)):
             elevation = self.basic_route_info.iloc[i]['elevation']
-            elevationColors.append(self.normalizeToColors(minElevation,maxElevation,elevation))
+            elevationColors.append(Coloring.normalizeToColors(min=minElevation,max=maxElevation,actualValue=elevation))
 
         self.basic_route_info['colors'] = elevationColors
+
         return self.basic_route_info
     
-    def normalizeToColors(self,min,max,actualValue):
-        factor = (actualValue - min) / (max - min)
-        red   = int(255*factor)
-        green = int(255*(1-factor))
-        blue  = 0
-        rgb = (red,green,blue)
-        return self.rgb_to_hex(rgb)
+    def CalculateRythmXKm(self):
         
+        RythmxKMDF = pd.DataFrame(columns=[
+            'KM',
+            'Rythm'
+        ])
+        
+        maxDistance = self.getMaxDistanceInt()
+        for km in range(1,maxDistance):
+            times = self.basic_route_info[(self.basic_route_info['distance']<=km) & (self.basic_route_info['distance']>=km-1)]
+            startKMTime = times.iloc[0]['time']
+            endKMTime   = times.iloc[-1]['time']
+            KMTime      = endKMTime-startKMTime
+            rythm       = time.strftime("%M:%S",time.gmtime(KMTime.seconds))
+            minutes,seconds = divmod(KMTime.seconds,60)
+            RythmxKMDF.loc[len(RythmxKMDF)] = [km,KMTime.seconds]
 
+        return RythmxKMDF,seconds
     
-    def rgb_to_hex(self,rgb):
-        # Ensure RGB values are within the valid range (0-255)
-        r, g, b = [max(0, min(255, int(x))) for x in rgb]
-        
-        # Convert to HEX format
-        hex_color = "#{:02X}{:02X}{:02X}".format(r, g, b)
-        
-        return hex_color
+    def getMaxDistanceInt(self):
+        return math.ceil(self.basic_route_info.loc[len(self.basic_route_info)-1]['distance'])
 
 
     
